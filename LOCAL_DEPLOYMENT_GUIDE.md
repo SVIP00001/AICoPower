@@ -88,7 +88,7 @@ pnpm run db:push
 pnpm run dev
 ```
 
-访问 http://localhost:5000 查看应用。
+访问 http://localhost:15000 查看应用。
 
 ---
 

@@ -49,7 +49,7 @@ pnpm run db:push
 echo "🎯 启动开发服务器..."
 echo ""
 echo "✨ 开发环境已启动！"
-echo "📱 访问: http://localhost:5000"
+echo "📱 访问: http://localhost:15000"
 echo ""
 echo "按 Ctrl+C 停止服务器"
 echo ""
