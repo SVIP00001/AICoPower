@@ -64,23 +64,41 @@ export default function RegisterPage() {
     }
 
     setIsSendingCode(true);
-    // 模拟发送验证码
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    setIsSendingCode(false);
     
-    // 开始倒计时
-    setCountdown(60);
-    const timer = setInterval(() => {
-      setCountdown(prev => {
-        if (prev <= 1) {
-          clearInterval(timer);
-          return 0;
-        }
-        return prev - 1;
+    try {
+      // 调用实际的验证码发送 API
+      const response = await fetch('/api/auth/verify/email', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email }),
       });
-    }, 1000);
-    
-    alert('验证码已发送（模拟：123456）');
+
+      const data = await response.json();
+      if (data.success) {
+        // 开始倒计时
+        setCountdown(60);
+        const timer = setInterval(() => {
+          setCountdown(prev => {
+            if (prev <= 1) {
+              clearInterval(timer);
+              return 0;
+            }
+            return prev - 1;
+          });
+        }, 1000);
+        
+        alert('验证码已发送到您的邮箱');
+      } else {
+        alert('发送验证码失败：' + (data.error || '未知错误'));
+      }
+    } catch (error) {
+      console.error('发送验证码失败:', error);
+      alert('发送验证码失败，请稍后重试');
+    } finally {
+      setIsSendingCode(false);
+    }
   };
 
   // 处理注册
@@ -126,10 +144,33 @@ export default function RegisterPage() {
       return;
     }
 
+    // 添加验证码验证
+    if (!verificationCode) {
+      alert('请输入验证码');
+      return;
+    }
+
     setIsRegistering(true);
 
     try {
-      const response = await fetch('/api/auth/register', {
+      // 先验证验证码
+      const verifyResponse = await fetch('/api/auth/verify/email/confirm', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email, code: verificationCode }),
+      });
+
+      const verifyData = await verifyResponse.json();
+      if (!verifyData.success) {
+        setIsRegistering(false);
+        alert('验证码验证失败：' + (verifyData.error || '未知错误'));
+        return;
+      }
+
+      // 验证码验证成功后，调用注册 API
+      const registerResponse = await fetch('/api/auth/register', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -143,11 +184,9 @@ export default function RegisterPage() {
         }),
       });
 
-      const data = await response.json();
-
-      if (data.success) {
+      const registerData = await registerResponse.json();
+      if (registerData.success) {
         // 注册成功
-        setIsRegistering(false);
         setRegisterSuccess(true);
 
         // 3秒后跳转到登录页
@@ -155,12 +194,13 @@ export default function RegisterPage() {
           router.push('/login');
         }, 3000);
       } else {
-        setIsRegistering(false);
-        alert(data.message || '注册失败，请稍后重试');
+        alert(registerData.message || '注册失败，请稍后重试');
       }
     } catch (error) {
-      setIsRegistering(false);
+      console.error('注册失败:', error);
       alert('注册失败，请稍后重试');
+    } finally {
+      setIsRegistering(false);
     }
   };
 
@@ -211,7 +251,7 @@ export default function RegisterPage() {
               </CardHeader>
               <CardContent className="space-y-6">
                 {/* 注册类型选择 */}
-                <Tabs value={registerType} onValueChange={(v: any) => setRegisterType(v)}>
+                <Tabs value={registerType} onValueChange={(v) => setRegisterType(v as 'email' | 'phone')}>
                   <TabsList className="grid w-full grid-cols-2">
                     <TabsTrigger value="email">
                       <Mail className="w-4 h-4 mr-2" />

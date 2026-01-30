@@ -55,6 +55,9 @@ interface AuthContextType {
   login: (identifier: string, password: string) => Promise<{ success: boolean; error?: string }>;
   logout: () => Promise<void>;
   hasRole: (roles: UserRole[]) => boolean;
+  sendEmailVerification: (email: string) => Promise<{ success: boolean; error?: string }>;
+  verifyEmail: (email: string, code: string) => Promise<{ success: boolean; error?: string }>;
+  isEmailVerified: () => boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -287,6 +290,49 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return roles.includes(user.role);
   };
 
+  // 发送邮箱验证码
+  const sendEmailVerification = async (email: string): Promise<{ success: boolean; error?: string }> => {
+    try {
+      const response = await fetch('/api/auth/verify/email', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email }),
+      });
+
+      const data = await response.json();
+      return data;
+    } catch (error) {
+      console.error('发送邮箱验证码失败:', error);
+      return { success: false, error: '发送验证码失败，请稍后重试' };
+    }
+  };
+
+  // 验证邮箱
+  const verifyEmail = async (email: string, code: string): Promise<{ success: boolean; error?: string }> => {
+    try {
+      const response = await fetch('/api/auth/verify/email/confirm', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email, code }),
+      });
+
+      const data = await response.json();
+      return data;
+    } catch (error) {
+      console.error('验证邮箱失败:', error);
+      return { success: false, error: '验证失败，请稍后重试' };
+    }
+  };
+
+  // 检查邮箱是否已验证
+  const isEmailVerified = (): boolean => {
+    return user?.emailVerified || false;
+  };
+
   return (
     <AuthContext.Provider
       value={{
@@ -296,11 +342,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         login,
         logout,
         hasRole,
+        sendEmailVerification,
+        verifyEmail,
+        isEmailVerified,
       }}
     >
       {children}
     </AuthContext.Provider>
   );
+
 }
 
 export function useAuth() {

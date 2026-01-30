@@ -33,6 +33,8 @@ export const users = pgTable(
     updatedAt: timestamp("updated_at", { withTimezone: true }),
     lastLoginAt: timestamp("last_login_at", { withTimezone: true }),
     lastLoginIp: text("last_login_ip"),
+    verificationCode: varchar("verification_code", { length: 6 }),
+    verificationExpires: timestamp("verification_expires", { withTimezone: true }),
   },
   (table) => ({
     emailIdx: index("users_email_idx").on(table.email),
@@ -145,6 +147,8 @@ export const updateUserSchema = createCoercedInsertSchema(users)
     emailVerified: true,
     phoneVerified: true,
     twoFactorEnabled: true,
+    verificationCode: true,
+    verificationExpires: true,
   })
   .partial()
 
